@@ -3,135 +3,163 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Control Financiero</title>
+    <title>Panel de Control Comercial</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans min-h-screen p-4 sm:p-6">
 
-    <div class="container mx-auto max-w-5xl">
-        <header class="mb-8 border-b border-slate-800 pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div class="container mx-auto max-w-7xl">
+        <header class="mb-8 border-b border-slate-800 pb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-                <h1 class="text-2xl sm:text-3xl font-extrabold text-indigo-400 tracking-tight">Panel de Control Financiero</h1>
-                <p class="text-slate-400 text-sm mt-1">Conectado en Vivo (Sincronización Inmediata)</p>
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-indigo-400 tracking-tight">Seguimiento de Programas & Ensayos</h1>
+                <p class="text-slate-400 text-sm mt-1">Datos consolidados en vivo desde Google Sheets</p>
             </div>
-            <button onclick="cargarDatosInmediatos()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-all shadow-lg active:scale-95">
-                🔄 Forzar Actualización
-            </button>
+            <div class="flex items-center gap-2 bg-slate-900 px-4 py-2 rounded-xl border border-slate-800">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="text-xs text-slate-300 font-medium">Actualización automática</span>
+            </div>
         </header>
 
-        <div id="dashboard" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="col-span-full text-center py-12 text-indigo-400 animate-pulse font-medium">
-                Estableciendo conexión segura con tus celdas de Google...
+        <div id="kpi-summary" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            </div>
+
+        <div class="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-slate-800/60 text-slate-400 font-semibold uppercase text-xs tracking-wider border-b border-slate-800">
+                            <th class="p-4">Código / Programa</th>
+                            <th class="p-4">Sector</th>
+                            <th class="p-4 text-center">Meta</th>
+                            <th class="p-4 text-center">Llevamos</th>
+                            <th class="p-4 text-center">Faltan</th>
+                            <th class="p-4 text-center">Cumplimiento</th>
+                            <th class="p-4 text-center">Prioridad</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-cuerpo" class="divide-y divide-slate-800/50 text-slate-300">
+                        <tr>
+                            <td colspan="7" class="text-center py-12 text-indigo-400 animate-pulse font-medium">
+                                Cargando matriz de datos comerciales...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
     <script>
-        // Tu enlace verificado con los datos actuales
-        const URL_TU_TUNEL = 'https://script.google.com/macros/s/AKfycbxdtq2cf24CLXmxxZHbX39NGjZmSdS4cKHkT5dcBOYcu78UjDI8-a4x4w9ka_R4HL_Tyg/exec';
+        // ID de tu hoja de cálculo actual
+        const SHEET_ID = '1mcbvKGq7HOH_N10MRmoOwhQd-bOdZvM0OO8vQjXFvSY';
+        // Endpoint Query de Google que trae los datos puros sin caché agresiva
+        const URL_API = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&tq=SELECT*&cache=` + Math.random();
 
-        async function cargarDatosInmediatos() {
-            const contenedor = document.getElementById('dashboard');
-            
+        async function cargarInformacion() {
             try {
-                // Parche proxy transparente para evitar restricciones del navegador en entornos estáticos como GitHub Pages
-                const respuesta = await fetch(URL_TU_TUNEL, { method: 'GET', redirect: 'follow' });
+                const respuesta = await fetch(URL_API);
+                const texto = await respuesta.text();
                 
-                if (!respuesta.ok) throw new Error();
-                
-                const datos = await respuesta.json();
-                contenedor.innerHTML = ''; // Limpiamos la carga previa
+                // Limpiar la envoltura protectora de Google para obtener JSON puro
+                const datos = JSON.parse(texto.substring(texto.indexOf('{'), texto.lastIndexOf('}') + 1));
+                const filas = datos.table.rows;
 
-                const indicadores = [
-                    { 
-                        nombre: "Meta Mensual Facturación", 
-                        valor: datos.meta || "$0", 
-                        detalle: "Meta fijada", 
-                        color: "border-emerald-500", 
-                        bgIcon: "bg-emerald-500/10", 
-                        textIcon: "text-emerald-400" 
-                    },
-                    { 
-                        nombre: "Venta del Mes", 
-                        valor: datos.venta || "$0", 
-                        detalle: "Acumulado actual", 
-                        color: "border-indigo-500", 
-                        bgIcon: "bg-indigo-500/10", 
-                        textIcon: "text-indigo-400" 
-                    },
-                    { 
-                        nombre: "Pendiente por Facturar", 
-                        valor: datos.pendiente || "$0", 
-                        detalle: "Brecha por cumplir", 
-                        color: "border-amber-500", 
-                        bgIcon: "bg-amber-500/10", 
-                        textIcon: "text-amber-400" 
-                    }
-                ];
+                let htmlTabla = '';
+                let datosTotales = { meta: 0, llevamos: 0, faltan: 0, porcentaje: "0%" };
 
-                // Dibujar tarjetas estructuradas
-                indicadores.forEach(ind => {
-                    const tarjeta = document.createElement('div');
-                    tarjeta.className = `bg-slate-900 p-6 rounded-2xl border-l-4 ${ind.color} border border-y-slate-800 border-r-slate-800 flex flex-col justify-between shadow-2xl transition-all duration-200 hover:border-slate-700`;
+                // Recorremos fila por fila (Saltando la cabecera i=0)
+                for (let i = 0; i < filas.length; i++) {
+                    const c = filas[i].c;
                     
-                    tarjeta.innerHTML = `
-                        <div>
-                            <div class="flex justify-between items-start mb-2">
-                                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Métrica</span>
-                                <span class="${ind.bgIcon} ${ind.textIcon} text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">${ind.detalle}</span>
-                            </div>
-                            <h2 class="text-lg font-bold text-slate-200 leading-snug">${ind.nombre}</h2>
-                        </div>
-                        <div class="mt-5">
-                            <span class="text-2xl sm:text-3xl font-black text-white tracking-tight">${ind.valor}</span>
-                        </div>
-                        <div class="mt-4 pt-3 border-t border-slate-800/60 text-[11px] text-slate-500 flex items-center gap-1.5">
-                            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            Sincronizado en tiempo real
-                        </div>
+                    // Validar que la fila tenga datos reales
+                    if (!c || !c[0] || !c[0].v) continue;
+
+                    // Extraer los textos formateados tal cual están en tu Excel
+                    const codigo      = c[0] ? (c[0].f || c[0].v) : '';
+                    const sector      = c[1] ? c[1].v : '';
+                    const programa    = c[2] ? c[2].v : '';
+                    const meta        = c[3] ? (c[3].f || c[3].v) : '0';
+                    const llevamos    = c[4] ? (c[4].f || c[4].v) : '0';
+                    const faltan      = c[5] ? (c[5].f || c[5].v) : '0';
+                    const porcentaje  = c[6] ? (c[6].f || c[6].v) : '0%';
+                    const prioridad   = c[7] ? c[7].v.toString().toUpperCase().trim() : '';
+
+                    // Si es la fila de TOTALES, la guardamos para las tarjetas de arriba y no la ponemos en la tabla ordinaria
+                    if (codigo.toString().toUpperCase().includes("TOTALES")) {
+                        datosTotales = { meta, llevamos, faltan, porcentaje };
+                        continue; 
+                    }
+
+                    // Definir colores estéticos para las etiquetas de prioridad
+                    let clasePrioridad = 'bg-slate-800 text-slate-400';
+                    if (prioridad === 'LOGRADO') clasePrioridad = 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+                    else if (prioridad === 'ALTA')  clasePrioridad = 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
+                    else if (prioridad === 'MEDIA') clasePrioridad = 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
+                    else if (prioridad === 'BAJA')  clasePrioridad = 'bg-sky-500/10 text-sky-400 border border-sky-500/20';
+
+                    // Construcción de la fila en HTML
+                    htmlTabla += `
+                        <tr class="hover:bg-slate-800/30 transition-colors">
+                            <td class="p-4">
+                                <span class="font-mono text-indigo-400 font-bold block text-xs">${codigo}</span>
+                                <span class="text-slate-200 font-medium text-xs sm:text-sm mt-0.5 block max-w-md whitespace-normal leading-tight">${programa}</span>
+                            </td>
+                            <td class="p-4 text-slate-400 align-middle">${sector}</td>
+                            <td class="p-4 text-center font-semibold text-slate-100 align-middle">${meta}</td>
+                            <td class="p-4 text-center font-semibold text-indigo-300 align-middle">${llevamos}</td>
+                            <td class="p-4 text-center font-semibold text-rose-300 align-middle">${faltan}</td>
+                            <td class="p-4 text-center align-middle">
+                                <span class="text-sm font-black text-slate-100">${porcentaje}</span>
+                            </td>
+                            <td class="p-4 text-center align-middle">
+                                <span class="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wider inline-block ${clasePrioridad}">
+                                    ${prioridad}
+                                </span>
+                            </td>
+                        </tr>
                     `;
-                    contenedor.appendChild(tarjeta);
-                });
+                }
+
+                // Inyectar la tabla en el HTML
+                document.getElementById('tabla-cuerpo').innerHTML = htmlTabla || '<tr><td colspan="7" class="p-4 text-center text-amber-400">No se encontraron registros.</td></tr>';
+
+                // Inyectar las tarjetas superiores de Totales Generales sacados automáticamente de tu archivo
+                document.getElementById('kpi-summary').innerHTML = `
+                    <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-lg">
+                        <span class="text-xs text-slate-500 font-bold uppercase tracking-wider block">Meta Global</span>
+                        <p class="text-2xl font-black text-slate-200 mt-1">${datosTotales.meta}</p>
+                    </div>
+                    <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-lg border-l-4 border-l-indigo-500">
+                        <span class="text-xs text-slate-500 font-bold uppercase tracking-wider block">Total Logrado</span>
+                        <p class="text-2xl font-black text-indigo-400 mt-1">${datosTotales.llevamos}</p>
+                    </div>
+                    <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-lg border-l-4 border-l-rose-500">
+                        <span class="text-xs text-slate-500 font-bold uppercase tracking-wider block">Total Faltante</span>
+                        <p class="text-2xl font-black text-rose-400 mt-1">${datosTotales.faltan}</p>
+                    </div>
+                    <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-lg border-l-4 border-l-emerald-500">
+                        <span class="text-xs text-slate-500 font-bold uppercase tracking-wider block">% Cumplimiento Total</span>
+                        <p class="text-2xl font-black text-emerald-400 mt-1">${datosTotales.porcentaje}</p>
+                    </div>
+                `;
 
             } catch (error) {
                 console.error(error);
-                // Si el navegador rechaza la conexión fetch tradicional por políticas de sandbox CORS local,
-                // usamos inyección JSONP automática de respaldo seguro.
-                const scriptViejo = document.getElementById('jsonp-fallback');
-                if (scriptViejo) scriptViejo.remove();
-                
-                window.procesarRespaldo = function(datosRespaldo) {
-                    contenedor.innerHTML = '';
-                    const backupInd = [
-                        { nombre: "Meta Mensual Facturación", valor: datosRespaldo.meta, color: "border-emerald-500", bgIcon: "bg-emerald-500/10", textIcon: "text-emerald-400", detalle: "Meta" },
-                        { nombre: "Venta del Mes", valor: datosRespaldo.venta, color: "border-indigo-500", bgIcon: "bg-indigo-500/10", textIcon: "text-indigo-400", detalle: "Venta" },
-                        { nombre: "Pendiente por Facturar", valor: datosRespaldo.pendiente, color: "border-amber-500", bgIcon: "bg-amber-500/10", textIcon: "text-amber-400", detalle: "Pendiente" }
-                    ];
-                    
-                    backupInd.forEach(ind => {
-                        const tarjeta = document.createElement('div');
-                        tarjeta.className = `bg-slate-900 p-6 rounded-2xl border-l-4 ${ind.color} border border-y-slate-800 border-r-slate-800 flex flex-col justify-between shadow-2xl`;
-                        tarjeta.innerHTML = `
-                            <div><div class="flex justify-between items-start mb-2"><span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Métrica</span><span class="${ind.bgIcon} ${ind.textIcon} text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">${ind.detalle}</span></div><h2 class="text-lg font-bold text-slate-200">${ind.nombre}</h2></div>
-                            <div class="mt-5"><span class="text-2xl sm:text-3xl font-black text-white">${ind.valor}</span></div>
-                            <div class="mt-4 pt-3 border-t border-slate-800/60 text-[11px] text-slate-400 flex items-center gap-1.5"><span class="inline-block w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>Conexión Local Segura</div>
-                        `;
-                        contenedor.appendChild(tarjeta);
-                    });
-                };
-
-                const script = document.createElement('script');
-                script.id = 'jsonp-fallback';
-                script.src = `${URL_TU_TUNEL}?callback=procesarRespaldo&_=` + Math.random();
-                document.body.appendChild(script);
+                document.getElementById('tabla-cuerpo').innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-12 text-rose-400 bg-red-950/10">
+                            <p class="font-bold">⚠️ Error al mapear la matriz comercial</p>
+                            <p class="text-xs mt-1 text-slate-500">Asegúrate de que el botón compartir del Google Sheets esté configurado para 'Cualquier persona con el enlace'.</p>
+                        </td>
+                    </tr>
+                `;
             }
         }
 
-        // Bucle automático cada 7 segundos
-        setInterval(cargarDatosInmediatos, 7000);
-
-        // Inicialización
-        cargarDatosInmediatos();
+        // Refrescar los datos de forma limpia en segundo plano cada 10 segundos
+        setInterval(cargarInformacion, 10000);
+        // Carga inicial al encender la web
+        cargarInformacion();
     </script>
 </body>
 </html>
